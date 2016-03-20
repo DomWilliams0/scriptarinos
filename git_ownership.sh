@@ -1,13 +1,22 @@
-# Shows how many lines were touched by each user on every file, using git blame
 #!/bin/sh
+# Shows how many lines were touched by each user on every file in a git repository, using git blame
+
+# Parameters:
+# -f      Print full file paths
+
 set -e
 
 full_name=false
 
-while getopts "f" opt; do
+while getopts ":f" opt; do
   case $opt in
     f)
       full_name=true
+      ;;
+    \?)
+      echo "Invalid parameter: -$OPTARG"
+      exit 1
+      ;;
   esac
 done
 

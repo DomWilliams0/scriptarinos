@@ -4,6 +4,6 @@ set -e
 
 for f in `git ls-files | grep "java$"`; do
   echo `basename $f`
-  git blame $f | awk -F'(' '{ print $2 }' | awk '{ print $1 }' | sort | uniq -c | sort -nr
+  git blame --minimal --line-porcelain -w $f | pcregrep -o1 "^author\s(.+)$" | sort | uniq -c | sort -nr
   echo
 done

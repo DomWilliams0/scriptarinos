@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 
+set -i
+
 ROOT="$HOME/.dropbox-encrypted"
 DROPBOX_DIR="$ROOT/Dropbox"
 CONTAINER_PATH="$ROOT/container"
 SYNCED_CONTAINER_PATH="$DROPBOX_DIR/container"
 MOUNT="$HOME/dropbox-container"
 
-CONTAINER_SIZE="1G"
+CONTAINER_SIZE="512M"
 CONTAINER_DEVICE="dropbox-encrypted-$(whoami)"
 CONTAINER_DEVICE_MAPPED=/dev/mapper/$CONTAINER_DEVICE
 
@@ -40,7 +42,7 @@ create_container() {
 	set -e
 
 	echo Creating sparse container of size $CONTAINER_SIZE
-	dd if=/dev/zero of=$CONTAINER_PATH bs=1 count=0 seek=1G
+	dd if=/dev/zero of=$CONTAINER_PATH bs=1 count=0 seek=$CONTAINER_SIZE
 
 	echo Creating LUKS container
 	sudo cryptsetup -y luksFormat $CONTAINER_PATH
@@ -53,6 +55,11 @@ create_container() {
 	set +e
 }
 
+container_mounted() {
+	grep $MOUNT <(mount) 1>/dev/null 2>&1
+}
+
+
 mount_container() {
 	set -e
 
@@ -61,7 +68,7 @@ mount_container() {
 		sudo cryptsetup luksOpen $CONTAINER_PATH $CONTAINER_DEVICE
 	fi
 
-	if ! grep $MOUNT <(mount); then
+	if ! container_mounted; then
 		echo Mounting volume
 		mkdir -p -- $MOUNT
 		sudo mount $CONTAINER_DEVICE_MAPPED $MOUNT
@@ -92,16 +99,25 @@ wait_for_container() {
 do_mount() {
 	wait_for_container
 	mount_container
+}
 
 do_unmount() {
-	echo unmount
-	exit 2
+	# not mounted
+	if ! container_mounted; then
+		echo Not mounted
+		exit 1
+	fi
 
-	# ensure already mounted at $MOUNT
-	# unmount
-	# delete loopback device
-	# luksClose
-	# rsync into dropbox directory
+	# TODO extract to unmount function
+	echo Unmounting container
+	sudo umount $MOUNT
+	rmdir $MOUNT
+
+	echo Closing container
+	sudo cryptsetup luksClose $CONTAINER_DEVICE_MAPPED
+
+	echo Syncing with Dropbox
+	rsync $CONTAINER_PATH $SYNCED_CONTAINER_PATH
 }
 
 print_usage() {

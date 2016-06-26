@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 
-DROPBOX_DIR="$HOME/.dropbox-encrypted"
+ROOT="$HOME/.dropbox-encrypted"
+DROPBOX_DIR="$ROOT/Dropbox"
+CONTAINER_PATH="$ROOT/container"
+SYNCED_CONTAINER_PATH="$DROPBOX_DIR/container"
 MOUNT="$HOME/dropbox-container"
+
+HOME=$ROOT
 
 # TODO
 # keep container outside of Dropbox
@@ -15,20 +20,50 @@ do_setup() {
 		exit 0
 	fi
 
-	mkdir -p -- $DROPBOX_DIR
-	HOME=$DROPBOX_DIR
+	mkdir -p -- $ROOT
 	/usr/bin/dropbox-cli start -i
 }
 
+container_exists() {
+	[ -f $CONTAINER_PATH ]
+}
+
+container_synced() {
+	grep ": up to date$" <(dropbox-cli filestatus $SYNCED_CONTAINER_PATH) 1>/dev/null 2>&1
+}
+
+create_container() {
+	# TODO create
+	# this is just all todos so far isnt it
+	echo creating
+	:
+}
+
+# returns 0 if synced and ready to use, otherwise 1
+prepare_container() {
+
+	if container_exists; then
+		container_synced || return 1
+	else
+		create_container
+	fi
+}
+
+# exits with failure if container is not yet ready/synced
+wait_for_container() {
+	prepare_container || exit 1 # not ready yet
+}
+
 do_mount() {
-	echo mount
-	exit 2
+	wait_for_container
 
 	# create container if doesn't already exist
 	#	create sparse dd
 	#	create loopback device
 	#	encrypt with cryptsetup
 	#	create fs
+	# otherwise sync with dropbox
+	#	wait for dropbox to finish syncing it
 	# create loopback device
 	# mount in $MOUNT
 }
